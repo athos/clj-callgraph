@@ -1,5 +1,6 @@
 {:paths ["src" "resources"]
- :deps {org.clojure/clojure {:mvn/version "1.11.1"}}
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/tools.analyzer.jvm {:mvn/version "1.2.2"}}
  :aliases
  {:test
   {:extra-paths ["test"]
