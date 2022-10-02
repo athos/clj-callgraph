@@ -11,7 +11,8 @@
                :let [sym (symbol var)
                      deps (into #{} (keep #(some-> (:var %) symbol))
                                 (ast/nodes def))]]
-           [sym (disj deps sym)])
+           [sym
+            {:ns (namespace sym), :name (name sym), :deps (disj deps sym)}])
          (into {}))))
 
 (defn analyze-file [filename]
@@ -33,8 +34,8 @@
 
 (defn- remove-external-syms [deps]
   (let [toplevel-syms (-> deps keys set)]
-    (into {} (map (fn [[sym deps]]
-                    [sym (set/intersection toplevel-syms deps)]))
+    (into {} (map (fn [[k v]]
+                    [k (update v :deps set/intersection toplevel-syms)]))
           deps)))
 
 (defn analyze [filenames]
