@@ -17,20 +17,23 @@
 
 (defn analyze-file [filename]
   (with-open [r (java.io.PushbackReader. (io/reader filename))]
-    (let [[ns-form & forms] (->> (repeatedly #(read r false ::empty))
-                                 (take-while #(not= % ::empty)))]
-      (cond (nil? ns-form) {}
+    ;; this binding form is necessary to prevent the succeeding eval calls
+    ;; from changing the current namespace
+    (binding [*ns* *ns*]
+      (let [[ns-form & forms] (->> (repeatedly #(read r false ::empty))
+                                   (take-while #(not= % ::empty)))]
+        (cond (nil? ns-form) {}
 
-            (not (and (seq? ns-form)
-                      (= 'ns (first ns-form))
-                      (symbol? (second ns-form))))
-            (throw (ex-info "Unexpected ns form found" {:form ns-form}))
+              (not (and (seq? ns-form)
+                        (= 'ns (first ns-form))
+                        (symbol? (second ns-form))))
+              (throw (ex-info "Unexpected ns form found" {:form ns-form}))
 
-            :else
-            (let [ns-sym (second ns-form)
-                  env (assoc (ana/empty-env) :ns ns-sym)]
-              (eval ns-form)
-              (reduce #(merge %1 (analyze-form env %2)) {} forms))))))
+              :else
+              (let [ns-sym (second ns-form)
+                    env (assoc (ana/empty-env) :ns ns-sym)]
+                (eval ns-form)
+                (reduce #(merge %1 (analyze-form env %2)) {} forms)))))))
 
 (defn- remove-external-syms [deps]
   (let [toplevel-syms (-> deps keys set)]
