@@ -1,4 +1,4 @@
-(ns clj-callgraph.graph
+(ns clj-callgraph.api
   (:require [clj-callgraph.analysis :as ana]
             [clj-callgraph.diff :as diff]
             [clj-callgraph.renderer :as render]
@@ -11,6 +11,3 @@
   (let [deps1 (edn/read-string (slurp file1))
         deps2 (edn/read-string (slurp file2)) ]
     (render/render (diff/build-diff-deps deps1 deps2))))
-
-(defn -main [& args]
-  (apply diff-var-graph args))
