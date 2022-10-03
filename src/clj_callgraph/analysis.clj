@@ -1,8 +1,8 @@
 (ns clj-callgraph.analysis
   (:require [clojure.java.io :as io]
             [clojure.set :as set]
-            [clojure.tools.analyzer.jvm :as ana]
-            [clojure.tools.analyzer.ast :as ast]))
+            [clojure.tools.analyzer.ast :as ast]
+            [clojure.tools.analyzer.jvm :as ana]))
 
 (defn- analyze-form [env form]
   (let [tree (ana/analyze+eval form env)]
