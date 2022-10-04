@@ -13,8 +13,8 @@
         (f)))
     (f)))
 
-(defn dump-deps
-  ([src-files] (dump-deps src-files {}))
+(defn dump-data
+  ([src-files] (dump-data src-files {}))
   ([src-files opts]
    (with-out opts #(prn (ana/analyze src-files)))))
 
@@ -35,7 +35,7 @@
          deps2 (read-dump-file dump-file2)]
      (with-out opts #(render/render (diff/build-diff-deps deps1 deps2))))))
 
-(defn var-graph
-  ([src-files] (var-graph src-files {}))
+(defn generate-graph
+  ([src-files] (generate-graph src-files {}))
   ([src-files opts]
    (with-out opts #(render/render (ana/analyze src-files)))))
