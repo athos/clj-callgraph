@@ -6,27 +6,27 @@
             (reduce #(update %1 %2 (fnil conj #{}) k) ret deps))
           {} deps))
 
-(defn- merge-diff [data1 data2 diff]
-  (let [rev (reversed-deps data1)]
-    (reduce (fn [data [[k & ks] op]]
+(defn- merge-diff [deps1 deps2 diff]
+  (let [rev (reversed-deps deps1)]
+    (reduce (fn [deps [[k & ks] op]]
               (-> (case op
                     :+ (if ks
-                         (assoc-in data [k :edges (second ks)] {:added true})
-                         (assoc-in data [k :added] true))
+                         (assoc-in deps [k :edges (second ks)] {:added true})
+                         (assoc-in deps [k :added] true))
                     :- (if ks
-                         (assoc-in data [k :edges (second ks)] {:removed true})
-                         (let [attrs (get data1 k)]
-                           (-> (reduce (fn [data k']
-                                         (update-in data [k' :deps]
+                         (assoc-in deps [k :edges (second ks)] {:removed true})
+                         (let [attrs (get deps1 k)]
+                           (-> (reduce (fn [deps k']
+                                         (update-in deps [k' :deps]
                                                     (fnil conj #{})
                                                     k))
-                                       data (rev k))
+                                       deps (rev k))
                                (update k merge (select-keys attrs [:ns :name]))
                                (update-in [k :deps] (fnil into #{})
                                           (:deps attrs))
                                (assoc-in [k :removed] true)))))
                   (assoc-in [k :changed] true)))
-            data2 diff)))
+            deps2 diff)))
 
 (defn- mark-changes [deps]
   (let [rev (reversed-deps deps)
