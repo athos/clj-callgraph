@@ -4,7 +4,12 @@
             [clojure.tools.analyzer.ast :as ast]
             [clojure.tools.analyzer.jvm :as ana]))
 
-(defn- analyze-form [env form]
+(defn make-id-assigner []
+  (let [id (volatile! 0)]
+    (fn []
+      (vswap! id inc))))
+
+(defn- analyze-form [id env form]
   (let [tree (ana/analyze+eval form env)]
     (->> (for [{:keys [op var] :as def} (ast/nodes tree)
                :when (= :def op)
@@ -12,7 +17,8 @@
                      deps (into #{} (keep #(some-> (:var %) symbol))
                                 (ast/nodes def))]]
            [sym
-            {:ns (namespace sym), :name (name sym), :deps (disj deps sym)}])
+            {:id (id), :ns (namespace sym), :name (name sym),
+             :deps (disj deps sym)}])
          (into {}))))
 
 (defn analyze-file [filename]
@@ -20,7 +26,8 @@
     ;; this binding form is necessary to prevent the succeeding eval calls
     ;; from changing the current namespace
     (binding [*ns* *ns*]
-      (let [[ns-form & forms] (->> (repeatedly #(read r false ::empty))
+      (let [id (make-id-assigner)
+            [ns-form & forms] (->> (repeatedly #(read r false ::empty))
                                    (take-while #(not= % ::empty)))]
         (cond (nil? ns-form) {}
 
@@ -33,7 +40,7 @@
               (let [ns-sym (second ns-form)
                     env (assoc (ana/empty-env) :ns ns-sym)]
                 (eval ns-form)
-                (reduce #(merge %1 (analyze-form env %2)) {} forms)))))))
+                (reduce #(merge %1 (analyze-form id env %2)) {} forms)))))))
 
 (defn- remove-external-syms [deps]
   (let [toplevel-syms (-> deps keys set)]

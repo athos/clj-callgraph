@@ -6,6 +6,11 @@
             (reduce #(update %1 %2 (fnil conj #{}) k) ret deps))
           {} deps))
 
+(defn- strip-unnecessary-attrs [deps]
+  (reduce-kv (fn [deps k _]
+               (update deps k select-keys [:ns :name :deps]))
+             deps deps))
+
 (defn- merge-diff [deps1 deps2 diff]
   (let [rev (reversed-deps deps1)]
     (reduce (fn [deps [[k & ks] op]]
@@ -79,7 +84,9 @@
         deps))
 
 (defn build-diff-deps [deps1 deps2]
-  (let [diff (e/get-edits (e/diff deps1 deps2))]
+  (let [deps1' (strip-unnecessary-attrs deps1)
+        deps2' (strip-unnecessary-attrs deps2)
+        diff (e/get-edits (e/diff deps1' deps2'))]
     (-> (merge-diff deps1 deps2 diff)
         mark-changes
         annotate-ns-changes
