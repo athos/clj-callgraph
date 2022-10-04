@@ -1,6 +1,6 @@
 # clj-callgraph
 
-FIXME: my new library.
+A call graph generator for Clojure (with some fun features)
 
 ## Usage
 
