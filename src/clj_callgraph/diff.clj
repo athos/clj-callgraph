@@ -33,22 +33,28 @@
                   (assoc-in [k :changed] true)))
             deps2 diff)))
 
-(defn- mark-changes [deps]
+(defn- affected? [{:keys [changed affected]}]
+  (or changed affected))
+
+(defn- mark-affected [deps]
   (let [rev (reversed-deps deps)
         queue (into (clojure.lang.PersistentQueue/EMPTY)
-                    (comp (keep (fn [[k {:keys [changed]}]]
-                                  (when changed (rev k))))
-                          cat)
+                    (mapcat (fn [[k {:keys [changed]}]]
+                              (when changed (rev k))))
                     deps)]
     (loop [queue queue, deps deps]
       (if (empty? queue)
         deps
         (let [k (peek queue)
-              {:keys [changed]} (get deps k)]
-          (if changed
+              node (get deps k)]
+          (if (affected? node)
             (recur (pop queue) deps)
-            (recur (into (pop queue) (rev k))
-                   (assoc-in deps [k :changed] true))))))))
+            (recur (into (pop queue)
+                         (filter (fn [k']
+                                   (let [node' (get deps k')]
+                                     (= (:ns node) (:ns node')))))
+                         (rev k))
+                   (assoc-in deps [k :affected] true))))))))
 
 (defn- annotate-with-ns-changes [deps]
   (let [entries-by-ns (group-by (comp :ns val) deps)
@@ -77,10 +83,10 @@
 
 (defn- prune-unchanged [deps]
   (into {} (keep (fn [[k attrs]]
-                   (when (:changed attrs)
+                   (when (affected? attrs)
                      [k
                       (update attrs :deps
-                              #(into #{} (filter (comp :changed deps)) %))])))
+                              #(into #{} (filter (comp affected? deps)) %))])))
         deps))
 
 (defn build-diff-deps [deps1 deps2]
@@ -88,6 +94,6 @@
         deps2' (strip-unnecessary-attrs deps2)
         diff (e/get-edits (e/diff deps1' deps2'))]
     (-> (merge-diff deps1 deps2 diff)
-        mark-changes
+        mark-affected
         annotate-with-ns-changes
         prune-unchanged)))
