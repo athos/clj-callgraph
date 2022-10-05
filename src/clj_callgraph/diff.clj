@@ -50,7 +50,7 @@
             (recur (into (pop queue) (rev k))
                    (assoc-in deps [k :changed] true))))))))
 
-(defn- annotate-ns-changes [deps]
+(defn- annotate-with-ns-changes [deps]
   (let [entries-by-ns (group-by (comp :ns val) deps)
         stats (reduce-kv
                (fn [stats ns entries]
@@ -75,7 +75,7 @@
                    deps))
                deps deps)))
 
-(defn- shrink-unchanged [deps]
+(defn- prune-unchanged [deps]
   (into {} (keep (fn [[k attrs]]
                    (when (:changed attrs)
                      [k
@@ -89,5 +89,5 @@
         diff (e/get-edits (e/diff deps1' deps2'))]
     (-> (merge-diff deps1 deps2 diff)
         mark-changes
-        annotate-ns-changes
-        shrink-unchanged)))
+        annotate-with-ns-changes
+        prune-unchanged)))
