@@ -13,7 +13,7 @@
 
 (defn- merge-diff [deps1 deps2 diff]
   (let [rev (reversed-deps deps1)]
-    (reduce (fn [deps [[k & ks] op]]
+    (reduce (fn [deps [[k & ks] op more]]
               (-> (case op
                     :+ (if ks
                          (assoc-in deps [k :edges (second ks)] {:added true})
@@ -29,7 +29,20 @@
                                (update k merge (select-keys attrs [:ns :name]))
                                (update-in [k :deps] (fnil into #{})
                                           (:deps attrs))
-                               (assoc-in [k :removed] true)))))
+                               (assoc-in [k :removed] true))))
+                    :r (if ks
+                         (let [attrs (get deps1 k)]
+                           (-> deps
+                               (update-in [k :deps] into (:deps attrs))
+                               (assoc-in [k :edges]
+                                         (into {}
+                                               (map (fn [k']
+                                                      [k' {:removed true}]))
+                                               (:deps attrs)))
+                               (update-in [k :edges] into
+                                          (map (fn [k'] [k' {:added true}]))
+                                          more)))
+                         (assert false "Should not be reached here")))
                   (assoc-in [k :changed] true)))
             deps2 diff)))
 
