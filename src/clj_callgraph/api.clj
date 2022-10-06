@@ -33,7 +33,7 @@
   ([dump-file1 dump-file2 opts]
    (let [deps1 (read-dump-file dump-file1)
          deps2 (read-dump-file dump-file2)]
-     (with-out opts #(render/render (diff/build-diff-deps deps1 deps2))))))
+     (with-out opts #(render/render (diff/build-diff-deps deps1 deps2 opts))))))
 
 (defn generate-graph
   ([src-files] (generate-graph src-files {}))

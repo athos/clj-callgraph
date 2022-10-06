@@ -17,60 +17,68 @@
 (defn- merge-diff [deps1 deps2 diff]
   (let [rev (reversed-deps deps1)]
     (reduce (fn [deps [[k & ks] op more]]
-              (-> (case op
-                    :+ (if ks
-                         (assoc-in deps [k :edges (second ks)] {:added true})
-                         (update deps k add-status :added))
-                    :- (if ks
-                         (assoc-in deps [k :edges (second ks)] {:removed true})
-                         (let [attrs (get deps1 k)]
-                           (-> (reduce (fn [deps k']
-                                         (update-in deps [k' :deps]
-                                                    (fnil conj #{})
-                                                    k))
-                                       deps (rev k))
-                               (update k merge (select-keys attrs [:ns :name]))
-                               (update-in [k :deps] (fnil into #{})
-                                          (:deps attrs))
-                               (update k add-status :removed))))
-                    :r (if ks
-                         (let [attrs (get deps1 k)]
-                           (-> deps
-                               (update-in [k :deps] into (:deps attrs))
-                               (assoc-in [k :edges]
-                                         (into {}
-                                               (map (fn [k']
-                                                      [k' {:removed true}]))
-                                               (:deps attrs)))
-                               (update-in [k :edges] into
-                                          (map (fn [k'] [k' {:added true}]))
-                                          more)))
-                         (assert false "Should not be reached here")))
-                  (update k add-status :changed)))
+              (case op
+                :+ (if ks
+                     (-> deps
+                         (assoc-in [k :edges (second ks)] {:added true})
+                         (update k add-status :changed))
+                     (update deps k add-status :added))
+                :- (if ks
+                     (-> deps
+                         (assoc-in [k :edges (second ks)] {:removed true})
+                         (update k add-status :changed))
+                     (let [attrs (get deps1 k)]
+                       (-> (reduce (fn [deps k']
+                                     (update-in deps [k' :deps]
+                                                (fnil conj #{})
+                                                k))
+                                   deps (rev k))
+                           (update k merge (select-keys attrs [:ns :name]))
+                           (update-in [k :deps] (fnil into #{})
+                                      (:deps attrs))
+                           (update k add-status :removed))))
+                :r (if ks
+                     (let [attrs (get deps1 k)]
+                       (-> deps
+                           (update-in [k :deps] into (:deps attrs))
+                           (assoc-in [k :edges]
+                                     (into {}
+                                           (map (fn [k']
+                                                  [k' {:removed true}]))
+                                           (:deps attrs)))
+                           (update-in [k :edges] into
+                                      (map (fn [k'] [k' {:added true}]))
+                                      more)
+                           (update k add-status :changed)))
+                     (assert false "Should not be reached here"))))
             deps2 diff)))
 
-(defn- affected? [{:keys [status]}]
-  (or (:changed status) (:affected status)))
+(defn- updated? [{:keys [status]}]
+  (or (:added status) (:removed status) (:changed status)))
 
-(defn- mark-affected [deps]
+(defn- traced? [{:keys [status] :as attrs}]
+  (or (updated? attrs) (:traced status)))
+
+(defn- trace-affected [deps {:keys [ns-bounded-tracing]}]
   (let [rev (reversed-deps deps)
         queue (into (clojure.lang.PersistentQueue/EMPTY)
                     (mapcat (fn [[k {:keys [status]}]]
-                              (when (:changed status) (rev k))))
+                              (when (:changed status)
+                                (map (partial vector k) (rev k)))))
                     deps)]
-    (loop [queue queue, deps deps]
+    (loop [queue queue, visited #{}, deps deps]
       (if (empty? queue)
         deps
-        (let [k (peek queue)
-              node (get deps k)]
-          (if (affected? node)
-            (recur (pop queue) deps)
-            (recur (into (pop queue)
-                         (filter (fn [k']
-                                   (let [node' (get deps k')]
-                                     (= (:ns node) (:ns node')))))
-                         (rev k))
-                   (update deps k add-status :affected))))))))
+        (let [[k k'] (peek queue)
+              from (get deps k)
+              to (get deps k')]
+          (if (or (visited k') (traced? to)
+                  (when ns-bounded-tracing
+                    (not= (:ns from) (:ns to))))
+            (recur (pop queue) visited deps)
+            (recur (into (pop queue) (map (partial vector k')) (rev k'))
+                   (conj visited k')
+                   (update deps k' add-status :traced))))))))
 
 (defn- annotate-with-ns-changes [deps]
   (let [entries-by-ns (group-by (comp :ns val) deps)
@@ -99,17 +107,17 @@
 
 (defn- prune-unchanged [deps]
   (into {} (keep (fn [[k attrs]]
-                   (when (affected? attrs)
+                   (when (traced? attrs)
                      [k
                       (update attrs :deps
-                              #(into #{} (filter (comp affected? deps)) %))])))
+                              #(into #{} (filter (comp traced? deps)) %))])))
         deps))
 
-(defn build-diff-deps [deps1 deps2]
+(defn build-diff-deps [deps1 deps2 opts]
   (let [deps1' (strip-unnecessary-attrs deps1)
         deps2' (strip-unnecessary-attrs deps2)
         diff (e/get-edits (e/diff deps1' deps2'))]
     (-> (merge-diff deps1 deps2 diff)
-        mark-affected
+        (trace-affected opts)
         annotate-with-ns-changes
         prune-unchanged)))
