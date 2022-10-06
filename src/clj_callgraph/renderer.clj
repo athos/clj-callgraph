@@ -24,8 +24,12 @@
       (doseq [[k attrs] (->> (get entries-by-ns ns)
                              (sort safe-id-comparator))]
         (printf "%s[label=\"%s\" %s];\n" (munge* k) (:name attrs)
-                (cond (:added attrs) "color=chartreuse2 style=bold"
-                      (:removed attrs) "color=crimson style=\"bold,dashed\""
+                (cond (:added (:status attrs))
+                      "color=chartreuse2 style=bold"
+
+                      (:removed (:status attrs))
+                      "color=crimson style=\"bold,dashed\""
+
                       :else "")))
       (println "}"))
     (doseq [[_ entries] entries-by-ns
@@ -33,7 +37,11 @@
             k' (:deps attrs)]
       (printf "%s -> %s %s;\n" (munge* k) (munge* k')
               (let [e (get (:edges attrs) k')]
-                (cond (or (:added attrs) (:added e)) "[color=chartreuse2 style=bold]"
-                      (or (:removed attrs) (:removed e)) "[color=crimson style=\"bold,dashed\"]"
+                (cond (or (:added (:status attrs)) (:added e))
+                      "[color=chartreuse2 style=bold]"
+
+                      (or (:removed (:status attrs)) (:removed e))
+                      "[color=crimson style=\"bold,dashed\"]"
+
                       :else ""))))
     (println "}")))

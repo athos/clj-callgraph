@@ -11,13 +11,16 @@
                (update deps k select-keys [:ns :name :deps]))
              deps deps))
 
+(defn- add-status [attrs status]
+  (update attrs :status (fnil conj #{}) status))
+
 (defn- merge-diff [deps1 deps2 diff]
   (let [rev (reversed-deps deps1)]
     (reduce (fn [deps [[k & ks] op more]]
               (-> (case op
                     :+ (if ks
                          (assoc-in deps [k :edges (second ks)] {:added true})
-                         (assoc-in deps [k :added] true))
+                         (update deps k add-status :added))
                     :- (if ks
                          (assoc-in deps [k :edges (second ks)] {:removed true})
                          (let [attrs (get deps1 k)]
@@ -29,7 +32,7 @@
                                (update k merge (select-keys attrs [:ns :name]))
                                (update-in [k :deps] (fnil into #{})
                                           (:deps attrs))
-                               (assoc-in [k :removed] true))))
+                               (update k add-status :removed))))
                     :r (if ks
                          (let [attrs (get deps1 k)]
                            (-> deps
@@ -43,17 +46,17 @@
                                           (map (fn [k'] [k' {:added true}]))
                                           more)))
                          (assert false "Should not be reached here")))
-                  (assoc-in [k :changed] true)))
+                  (update k add-status :changed)))
             deps2 diff)))
 
-(defn- affected? [{:keys [changed affected]}]
-  (or changed affected))
+(defn- affected? [{:keys [status]}]
+  (or (:changed status) (:affected status)))
 
 (defn- mark-affected [deps]
   (let [rev (reversed-deps deps)
         queue (into (clojure.lang.PersistentQueue/EMPTY)
-                    (mapcat (fn [[k {:keys [changed]}]]
-                              (when changed (rev k))))
+                    (mapcat (fn [[k {:keys [status]}]]
+                              (when (:changed status) (rev k))))
                     deps)]
     (loop [queue queue, deps deps]
       (if (empty? queue)
@@ -67,17 +70,17 @@
                                    (let [node' (get deps k')]
                                      (= (:ns node) (:ns node')))))
                          (rev k))
-                   (assoc-in deps [k :affected] true))))))))
+                   (update deps k add-status :affected))))))))
 
 (defn- annotate-with-ns-changes [deps]
   (let [entries-by-ns (group-by (comp :ns val) deps)
         stats (reduce-kv
                (fn [stats ns entries]
                  (reduce
-                  (fn [stats [_ {:keys [added removed]}]]
+                  (fn [stats [_ {:keys [status]}]]
                     (cond-> stats
-                      added (update-in [ns :added] (fnil inc 0))
-                      removed (update-in [ns :removed] (fnil inc 0))))
+                      (:added status) (update-in [ns :added] (fnil inc 0))
+                      (:removed status) (update-in [ns :removed] (fnil inc 0))))
                   stats entries))
                {} entries-by-ns)
         ns-changes (reduce-kv (fn [changes ns {:keys [added removed]}]
