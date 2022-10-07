@@ -59,14 +59,18 @@
 (defn- traced? [{:keys [status] :as attrs}]
   (or (updated? attrs) (:traced status)))
 
-(defn- trace-affected [deps {:keys [ns-bounded-tracing]}]
+(defn- trace-affected [deps {:keys [ns-bounded-tracing max-tracing-hops]}]
   (let [rev (reversed-deps deps)
+        changes (into []
+                      (keep (fn [[k {:keys [status]}]]
+                              (when (:changed status) k)))
+                      deps)
         queue (into (clojure.lang.PersistentQueue/EMPTY)
-                    (mapcat (fn [[k {:keys [status]}]]
-                              (when (:changed status)
-                                (map (partial vector k) (rev k)))))
-                    deps)]
-    (loop [queue queue, visited #{}, deps deps]
+                    (mapcat (fn [k] (map (partial vector k) (rev k))))
+                    changes)]
+    (loop [queue queue
+           visited #{}
+           deps (reduce #(assoc-in %1 [%2 :hops] 0) deps changes)]
       (if (empty? queue)
         deps
         (let [[k k'] (peek queue)
@@ -74,11 +78,15 @@
               to (get deps k')]
           (if (or (visited k') (traced? to)
                   (when ns-bounded-tracing
-                    (not= (:ns from) (:ns to))))
+                    (not= (:ns from) (:ns to)))
+                  (when max-tracing-hops
+                    (>= (:hops from) max-tracing-hops)))
             (recur (pop queue) visited deps)
             (recur (into (pop queue) (map (partial vector k')) (rev k'))
                    (conj visited k')
-                   (update deps k' add-status :traced))))))))
+                   (-> deps
+                       (update k' add-status :traced)
+                       (assoc-in [k' :hops] (inc (:hops from)))))))))))
 
 (defn- annotate-with-ns-changes [deps]
   (let [entries-by-ns (group-by (comp :ns val) deps)
