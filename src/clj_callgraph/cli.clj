@@ -17,21 +17,24 @@
     (fn [s]
       (boolean (some #(re-find % s) regexes)))))
 
-(defn- collect-files [{:keys [files dir include-regex exclude-regex]}]
+(defn- collect-files
+  [{:keys [files dir include-regex exclude-regex] :or {dir "src"}}]
   (let [include? (if include-regex
                    (->matcher include-regex)
                    (constantly true))
         exclude? (if exclude-regex
                    (->matcher exclude-regex)
                    (constantly false))]
-    (->> (cond files (map io/file files)
-               dir (->> (file-seq (io/file (str dir)))
-                        (filter (fn [^File file]
-                                  (and (.isFile file)
-                                       (re-matches #".*\.clj[cs]?$"
-                                                   (.getName file))))))
-               :else (with-open [r (io/reader *in*)]
-                       (doall (map io/file (line-seq r)))))
+    (->> (if files
+           (if (= (str files) "-")
+             (with-open [r (io/reader *in*)]
+               (doall (map io/file (line-seq r))))
+             (map io/file files))
+           (->> (file-seq (io/file (str dir)))
+                (filter (fn [^File file]
+                          (and (.isFile file)
+                               (re-matches #".*\.clj[cs]?$"
+                                           (.getName file)))))))
          (filter (fn [^File file]
                    (let [path (.getPath file)]
                      (and (include? path) (not (exclude? path)))))))))
