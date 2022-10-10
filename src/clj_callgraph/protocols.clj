@@ -3,3 +3,6 @@
 (defprotocol IOutput
   (write [this x])
   (close [this]))
+
+(defprotocol IRenderer
+ (render [this data]))
