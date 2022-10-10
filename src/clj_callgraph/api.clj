@@ -8,6 +8,23 @@
             [clojure.java.io :as io])
   (:import [java.io PushbackReader]))
 
+(defn dump-data
+  ([src-files] (dump-data src-files {}))
+  ([src-files {:keys [out]}]
+   (let [deps (ana/analyze src-files)]
+     (if out
+       (try
+         (proto/write out (pr-str deps))
+         (proto/close out)
+         (catch Throwable t
+           (proto/close out)
+           (throw t)))
+       deps))))
+
+(defn- read-dump-file [dump-file]
+  (with-open [r (PushbackReader. (io/reader dump-file))]
+    (edn/read r)))
+
 (defn- with-renderer [{:keys [out] :as opts} f]
   (let [output (or out (output/to-string))
         renderer (render/make-renderer output opts)]
@@ -15,15 +32,6 @@
       (f renderer)
       (finally
         (proto/close output)))))
-
-(defn dump-data
-  ([src-files] (dump-data src-files {}))
-  ([src-files opts]
-   (with-renderer opts #(prn (ana/analyze src-files)))))
-
-(defn- read-dump-file [dump-file]
-  (with-open [r (PushbackReader. (io/reader dump-file))]
-    (edn/read r)))
 
 (defn render-graph
   ([dump-file] (render-graph dump-file {}))
