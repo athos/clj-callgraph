@@ -17,15 +17,17 @@
 
 (defn- render-namespace
   [output ns-name [[_ {:keys [ns-added ns-removed]}] :as entries]]
-  (output/printf output
-                 "subgraph cluster_%s {\nshape=\"rect\";\nlabel=\"%s\";\n%s"
-                 (utils/munge* ns-name) ns-name
-                 (cond ns-added "color=chartreuse2 style=bold;\n"
-                       ns-removed "color=crimson style=bold\n"
-                       :else ""))
+  (when ns-name
+    (output/printf output
+                   "subgraph cluster_%s {\nshape=\"rect\";\nlabel=\"%s\";\n%s"
+                   (utils/munge* ns-name) ns-name
+                   (cond ns-added "color=chartreuse2 style=bold;\n"
+                         ns-removed "color=crimson style=bold\n"
+                         :else "")))
   (doseq [[k attrs] (utils/sort-by-id entries)]
     (render-node output k attrs))
-  (output/println output "}"))
+  (when ns-name
+    (output/println output "}")))
 
 (defn- render-namespaces [output entries-by-ns]
   (doseq [[ns entries] entries-by-ns]

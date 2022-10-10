@@ -7,14 +7,16 @@
 (defn- render-namespaces [output deps]
   (let [entries-by-ns (group-by (comp :ns val) deps)]
     (doseq [ns (ns/topo-sorted-namespaces deps)]
-      (output/printf output "subgraph \"%s\"\n" ns)
+      (when ns
+        (output/printf output "subgraph \"%s\"\n" ns))
       (doseq [[k attrs] (utils/sort-by-id (get entries-by-ns ns))]
         (output/printf output "%s([\"%s\"])\n" (utils/munge* k) (:name attrs))
         (doseq [k' (:deps attrs)]
           (output/printf output "%s --> %s\n"
                          (utils/munge* k)
                          (utils/munge* k'))))
-      (output/println output "end"))))
+      (when ns
+        (output/println output "end")))))
 
 (defrecord MermaidRenderer [output opts]
   proto/IRenderer

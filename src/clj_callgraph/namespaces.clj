@@ -8,7 +8,7 @@
                    (update-in [ns :deps]
                               (fnil into #{})
                               (comp (map (comp :ns deps))
-                                    (remove #{ns}))
+                                    (remove #(= % ns)))
                               (:deps attrs))))
              {} deps))
 

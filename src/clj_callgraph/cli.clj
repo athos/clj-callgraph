@@ -16,9 +16,16 @@
 (defn render-graph [{:keys [in] :as opts}]
   (api/render-graph (str in) (prep-out opts)))
 
+(defn render-ns-graph [{:keys [in] :as opts}]
+  (api/render-ns-graph (str in) (prep-out opts)))
+
 (defn render-diff-graph [{:keys [in1 in2] :as opts}]
   (api/render-diff-graph (str in1) (str in2) (prep-out opts)))
 
 (defn generate-graph [opts]
   (with-open [r (io/reader *in*)]
     (api/generate-graph (line-seq r) (prep-out opts))))
+
+(defn generate-ns-graph [opts]
+  (with-open [r (io/reader *in*)]
+    (api/generate-ns-graph (line-seq r) (prep-out opts))))
