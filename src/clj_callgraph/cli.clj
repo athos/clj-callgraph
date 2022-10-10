@@ -1,7 +1,8 @@
 (ns clj-callgraph.cli
   (:require [clj-callgraph.api :as api]
             [clj-callgraph.output :as output]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.string :as str])
   (:import [java.io File]))
 
 (defn- prep-out [{:keys [out] :as opts}]
@@ -17,24 +18,38 @@
     (fn [s]
       (boolean (some #(re-find % s) regexes)))))
 
-(defn- collect-files
-  [{:keys [files dir include-regex exclude-regex] :or {dir "src"}}]
+(defn- enumerate-files [{:keys [files namespaces dir] :or {dir "src"}}]
+  (cond files
+        (if (= (str files) "-")
+          (with-open [r (io/reader *in*)]
+            (doall (map io/file (line-seq r))))
+          (map io/file files))
+
+        namespaces
+        (for [ns namespaces
+              :let [ns' (-> (str ns)
+                            (str/replace \- \_)
+                            (str/replace \. \/))]
+              ext [".clj" ".cljc" ".cljs"]
+              :let [res (io/resource (str ns' ext))]
+              :when res]
+          (io/file res))
+
+        :else
+        (->> (file-seq (io/file (str dir)))
+             (filter (fn [^File file]
+                       (and (.isFile file)
+                            (re-matches #".*\.clj[cs]?$"
+                                        (.getName file))))))))
+
+(defn- collect-files [{:keys [include-regex exclude-regex] :as opts}]
   (let [include? (if include-regex
                    (->matcher include-regex)
                    (constantly true))
         exclude? (if exclude-regex
                    (->matcher exclude-regex)
                    (constantly false))]
-    (->> (if files
-           (if (= (str files) "-")
-             (with-open [r (io/reader *in*)]
-               (doall (map io/file (line-seq r))))
-             (map io/file files))
-           (->> (file-seq (io/file (str dir)))
-                (filter (fn [^File file]
-                          (and (.isFile file)
-                               (re-matches #".*\.clj[cs]?$"
-                                           (.getName file)))))))
+    (->> (enumerate-files opts)
          (filter (fn [^File file]
                    (let [path (.getPath file)]
                      (and (include? path) (not (exclude? path)))))))))
