@@ -1,10 +1,6 @@
 (ns clj-callgraph.diff
-  (:require [editscript.core :as e]))
-
-(defn- reversed-deps [deps]
-  (reduce (fn [ret [k {:keys [deps]}]]
-            (reduce #(update %1 %2 (fnil conj #{}) k) ret deps))
-          {} deps))
+  (:require [clj-callgraph.graph :as graph]
+            [editscript.core :as e]))
 
 (defn- strip-unnecessary-attrs [deps]
   (reduce-kv (fn [deps k _]
@@ -15,7 +11,7 @@
   (update attrs :status (fnil conj #{}) status))
 
 (defn- merge-diff [deps1 deps2 diff]
-  (let [rev (reversed-deps deps1)]
+  (let [rev (graph/transpose-graph deps1)]
     (reduce (fn [deps [[k & ks] op more]]
               (case op
                 :+ (if ks
@@ -32,7 +28,8 @@
                                      (update-in deps [k' :deps]
                                                 (fnil conj #{})
                                                 k))
-                                   deps (rev k))
+                                   deps
+                                   (get-in rev [k :deps]))
                            (update k merge (select-keys attrs [:ns :name]))
                            (update-in [k :deps] (fnil into #{})
                                       (:deps attrs))
@@ -60,13 +57,14 @@
   (or (updated? attrs) (:traced status)))
 
 (defn- trace-affected [deps {:keys [ns-bounded-tracing max-tracing-hops]}]
-  (let [rev (reversed-deps deps)
+  (let [rev (graph/transpose-graph deps)
         changes (into []
                       (keep (fn [[k {:keys [status]}]]
                               (when (:changed status) k)))
                       deps)
         queue (into (clojure.lang.PersistentQueue/EMPTY)
-                    (mapcat (fn [k] (map (partial vector k) (rev k))))
+                    (mapcat #(->> (get-in rev [% :deps])
+                                  (map (partial vector %))))
                     changes)]
     (loop [queue queue
            visited #{}
@@ -82,7 +80,8 @@
                   (when max-tracing-hops
                     (>= (:hops from) max-tracing-hops)))
             (recur (pop queue) visited deps)
-            (recur (into (pop queue) (map (partial vector k')) (rev k'))
+            (recur (into (pop queue) (map (partial vector k'))
+                         (get-in rev [k' :deps]))
                    (conj visited k')
                    (-> deps
                        (update k' add-status :traced)
