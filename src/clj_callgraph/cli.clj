@@ -10,15 +10,31 @@
            (output/to-file (str out))
            (output/to-stdout))))
 
-(defn- collect-files [{:keys [files dir]}]
-  (cond files files
-        dir (->> (file-seq (io/file (str dir)))
-                 (filter (fn [^File file]
-                           (and (.isFile file)
-                                (re-matches #".*\.clj[cs]?$"
-                                            (.getName file))))))
-        :else (with-open [r (io/reader *in*)]
-                (doall (line-seq r)))))
+(defn- ->matcher [x]
+  (let [regexes (if (coll? x)
+                  (mapv (comp re-pattern str) x)
+                  [(re-pattern (str x))])]
+    (fn [s]
+      (boolean (some #(re-find % s) regexes)))))
+
+(defn- collect-files [{:keys [files dir include-regex exclude-regex]}]
+  (let [include? (if include-regex
+                   (->matcher include-regex)
+                   (constantly true))
+        exclude? (if exclude-regex
+                   (->matcher exclude-regex)
+                   (constantly false))]
+    (->> (cond files (map io/file files)
+               dir (->> (file-seq (io/file (str dir)))
+                        (filter (fn [^File file]
+                                  (and (.isFile file)
+                                       (re-matches #".*\.clj[cs]?$"
+                                                   (.getName file))))))
+               :else (with-open [r (io/reader *in*)]
+                       (doall (map io/file (line-seq r)))))
+         (filter (fn [^File file]
+                   (let [path (.getPath file)]
+                     (and (include? path) (not (exclude? path)))))))))
 
 (defn dump-data [opts]
   (api/dump-data (collect-files opts) (prep-out opts)))
