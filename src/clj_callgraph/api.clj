@@ -30,8 +30,10 @@
         renderer (render/make-renderer output opts)]
     (try
       (f renderer)
-      (finally
-        (proto/close output)))))
+      (proto/close output)
+      (catch Throwable t
+        (proto/close output)
+        (throw t)))))
 
 (defn render-graph
   ([dump-file] (render-graph dump-file {}))
