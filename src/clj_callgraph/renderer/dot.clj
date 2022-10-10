@@ -2,19 +2,11 @@
   (:refer-clojure :exclude [printf println])
   (:require [clj-callgraph.output :as output]
             [clj-callgraph.protocols :as proto]
-            [clojure.string :as str]))
-
-(defn- munge* [s]
-  (str/replace (str s) #"[^A-Za-z0-9_]" #(format "_%d_" (int (first %)))))
-
-(defn- safe-id-comparator [[_ {x :id}] [_ {y :id}]]
-  (if (nil? x)
-    (if (nil? y) 0 -1)
-    (if (nil? y) 1 (compare x y))))
+            [clj-callgraph.renderer.utils :as utils]))
 
 (defn- render-node [output k attrs]
   (output/printf output
-                 "%s[label=\"%s\" %s];\n" (munge* k) (:name attrs)
+                 "%s[label=\"%s\" %s];\n" (utils/munge* k) (:name attrs)
                  (cond (:added (:status attrs))
                        "color=chartreuse2 style=bold"
 
@@ -27,11 +19,11 @@
   [output ns-name [[_ {:keys [ns-added ns-removed]}] :as entries]]
   (output/printf output
                  "subgraph cluster_%s {\nshape=\"rect\";\nlabel=\"%s\";\n%s"
-                 (munge* ns-name) ns-name
+                 (utils/munge* ns-name) ns-name
                  (cond ns-added "color=chartreuse2 style=bold;\n"
                        ns-removed "color=crimson style=bold\n"
                        :else ""))
-  (doseq [[k attrs] (sort safe-id-comparator entries)]
+  (doseq [[k attrs] (utils/sort-by-id entries)]
     (render-node output k attrs))
   (output/println output "}"))
 
@@ -44,7 +36,7 @@
           [k attrs] (sort entries)
           k' (:deps attrs)]
     (output/printf output
-                   "%s -> %s %s;\n" (munge* k) (munge* k')
+                   "%s -> %s %s;\n" (utils/munge* k) (utils/munge* k')
                    (let [e (get (:edges attrs) k')]
                      (cond (or (:added (:status attrs)) (:added e))
                            "[color=chartreuse2 style=bold]"
