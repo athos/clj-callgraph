@@ -15,9 +15,9 @@
 
 (defn- prep-out [{:keys [out] :as opts}]
   (assoc opts :out
-         (if out
-           (output/to-file (str out))
-           (output/to-stdout))))
+         (if (or (nil? out) (= (str out) "-"))
+           (output/to-stdout)
+           (output/to-file (str out)))))
 
 (defn- ->matcher [x]
   (let [regexes (if (coll? x)
