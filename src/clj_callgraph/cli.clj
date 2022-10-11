@@ -5,6 +5,14 @@
             [clojure.string :as str])
   (:import [java.io File]))
 
+(defn- prep-in
+  ([opts] (prep-in :in opts))
+  ([key opts]
+   (let [in (get opts key)]
+     (if (or (nil? in) (= (str in) "-"))
+       *in*
+       (str in)))))
+
 (defn- prep-out [{:keys [out] :as opts}]
   (assoc opts :out
          (if out
@@ -57,14 +65,16 @@
 (defn dump-data [opts]
   (api/dump-data (collect-files opts) (prep-out opts)))
 
-(defn render-graph [{:keys [in] :as opts}]
-  (api/render-graph (str in) (prep-out opts)))
+(defn render-graph [opts]
+  (api/render-graph (prep-in opts) (prep-out opts)))
 
-(defn render-ns-graph [{:keys [in] :as opts}]
-  (api/render-ns-graph (str in) (prep-out opts)))
+(defn render-ns-graph [opts]
+  (api/render-ns-graph (prep-in opts) (prep-out opts)))
 
-(defn render-diff-graph [{:keys [in1 in2] :as opts}]
-  (api/render-diff-graph (str in1) (str in2) (prep-out opts)))
+(defn render-diff-graph [opts]
+  (api/render-diff-graph (prep-in :in1 opts)
+                         (prep-in :in2 opts)
+                         (prep-out opts)))
 
 (defn generate-graph [opts]
   (api/generate-graph (collect-files opts) (prep-out opts)))
