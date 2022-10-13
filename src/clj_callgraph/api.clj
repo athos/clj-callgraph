@@ -58,6 +58,19 @@
      (with-renderer opts
        #(render/render % (diff/build-diff-deps deps1 deps2 opts))))))
 
+(defn render-ns-diff-graph
+  ([dump-data1 dump-data2]
+   (render-ns-diff-graph dump-data1 dump-data2 {}))
+  ([dump-data1 dump-data2 opts]
+   (let [deps1 (->dump-data dump-data1)
+         deps2 (->dump-data dump-data2)]
+     (with-renderer opts
+       (fn [renderer]
+         (->> (diff/build-diff-deps (ns/->ns-graph deps1)
+                                    (ns/->ns-graph deps2)
+                                    opts)
+              (render/render renderer)))))))
+
 (defn generate-graph
   ([src-files] (generate-graph src-files {}))
   ([src-files opts]

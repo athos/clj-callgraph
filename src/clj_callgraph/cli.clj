@@ -76,6 +76,11 @@
                          (prep-in :in2 opts)
                          (prep-out opts)))
 
+(defn render-ns-diff-graph [opts]
+  (api/render-ns-diff-graph (prep-in :in1 opts)
+                            (prep-in :in2 opts)
+                            (prep-out opts)))
+
 (defn generate-graph [opts]
   (api/generate-graph (collect-files opts) (prep-out opts)))
 
