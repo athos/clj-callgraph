@@ -22,9 +22,11 @@
            (throw t)))
        deps))))
 
-(defn- read-dump-file [dump-file]
-  (with-open [r (PushbackReader. (io/reader dump-file))]
-    (edn/read r)))
+(defn- ->dump-data [dump]
+  (if (map? dump)
+    dump
+    (with-open [r (PushbackReader. (io/reader dump))]
+      (edn/read r))))
 
 (defn- with-renderer [{:keys [out] :as opts} f]
   (let [output (or out (output/to-string))
@@ -37,22 +39,22 @@
         (throw t)))))
 
 (defn render-graph
-  ([dump-file] (render-graph dump-file {}))
-  ([dump-file opts]
-   (with-renderer opts #(render/render % (read-dump-file dump-file)))))
+  ([dump-data] (render-graph dump-data {}))
+  ([dump-data opts]
+   (with-renderer opts #(render/render % (->dump-data dump-data)))))
 
 (defn render-ns-graph
-  ([dump-file] (render-ns-graph dump-file {}))
-  ([dump-file opts]
+  ([dump-data] (render-ns-graph dump-data {}))
+  ([dump-data opts]
    (with-renderer opts
-     #(render/render % (ns/->ns-graph (read-dump-file dump-file))))))
+     #(render/render % (ns/->ns-graph (->dump-data dump-data))))))
 
 (defn render-diff-graph
-  ([dump-file1 dump-file2]
-   (render-diff-graph dump-file1 dump-file2 {}))
-  ([dump-file1 dump-file2 opts]
-   (let [deps1 (read-dump-file dump-file1)
-         deps2 (read-dump-file dump-file2)]
+  ([dump-data1 dump-data2]
+   (render-diff-graph dump-data1 dump-data2 {}))
+  ([dump-data1 dump-data2 opts]
+   (let [deps1 (->dump-data dump-data1)
+         deps2 (->dump-data dump-data2)]
      (with-renderer opts
        #(render/render % (diff/build-diff-deps deps1 deps2 opts))))))
 
