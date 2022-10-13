@@ -9,9 +9,9 @@
   ([opts] (prep-in :in opts))
   ([key opts]
    (let [in (get opts key)]
-     (if (or (nil? in) (= (str in) "-"))
-       *in*
-       (str in)))))
+     (cond (map? in) in
+           (or (nil? in) (= (str in) "-")) *in*
+           :else (str in)))))
 
 (defn- prep-out [{:keys [out] :as opts}]
   (assoc opts :out
