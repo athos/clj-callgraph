@@ -1,5 +1,6 @@
-(ns clj-callgraph.analysis
-  (:require [clojure.java.io :as io]
+(ns clj-callgraph.analyzer.tools-analyzer
+  (:require [clj-callgraph.protocols :as proto]
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.tools.analyzer.ast :as ast]
             [clojure.tools.analyzer.jvm :as ana]))
@@ -48,7 +49,12 @@
                     [k (update v :deps set/intersection toplevel-syms)]))
           deps)))
 
-(defn analyze [filenames]
-  (->> (map analyze-file filenames)
-       (apply merge)
-       remove-external-syms))
+(defrecord ToolsAnalyzer [opts]
+  proto/IAnalyzer
+  (analyze [_ files]
+    (->> (map analyze-file files)
+         (apply merge)
+         remove-external-syms)))
+
+(defn make-tools-analyzer [opts]
+  (->ToolsAnalyzer opts))

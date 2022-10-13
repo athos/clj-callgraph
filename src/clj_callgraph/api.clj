@@ -1,5 +1,5 @@
 (ns clj-callgraph.api
-  (:require [clj-callgraph.analysis :as ana]
+  (:require [clj-callgraph.analyzer :as ana]
             [clj-callgraph.diff :as diff]
             [clj-callgraph.namespaces :as ns]
             [clj-callgraph.output :as output]
@@ -9,10 +9,13 @@
             [clojure.java.io :as io])
   (:import [java.io PushbackReader]))
 
+(defn analyze [files opts]
+  (ana/analyze (ana/make-analyzer opts) files))
+
 (defn dump-data
   ([src-files] (dump-data src-files {}))
-  ([src-files {:keys [out]}]
-   (let [deps (ana/analyze src-files)]
+  ([src-files {:keys [out] :as opts}]
+   (let [deps (analyze src-files opts)]
      (if out
        (try
          (proto/write out (pr-str deps))
@@ -74,13 +77,13 @@
 (defn generate-graph
   ([src-files] (generate-graph src-files {}))
   ([src-files opts]
-   (with-renderer opts #(render/render % (ana/analyze src-files)))))
+   (with-renderer opts #(render/render % (analyze src-files opts)))))
 
 (defn generate-ns-graph
   ([src-files] (generate-ns-graph src-files {}))
   ([src-files opts]
    (with-renderer opts
-     #(render/render % (ns/->ns-graph (ana/analyze src-files))))))
+     #(render/render % (ns/->ns-graph (analyze src-files opts))))))
 
 (def to-string output/to-string)
 (def to-file output/to-file)

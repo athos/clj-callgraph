@@ -4,5 +4,8 @@
   (write [this x])
   (close [this]))
 
+(defprotocol IAnalyzer
+  (analyze [this input]))
+
 (defprotocol IRenderer
  (render [this data]))
