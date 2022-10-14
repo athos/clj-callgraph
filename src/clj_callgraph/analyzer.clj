@@ -7,7 +7,7 @@
   (if-let [analyzer (:analyzer opts)]
     (throw (ex-info (str "Unknown analyzer specified: " (name analyzer))
                     {:analyzer analyzer}))
-    (make-analyzer (assoc opts :analyzer :tools-analyzer))))
+    (make-analyzer (assoc opts :analyzer :clj-kondo))))
 
 (defmethod make-analyzer :tools-analyzer [opts]
   (require 'clj-callgraph.analyzer.tools-analyzer)
