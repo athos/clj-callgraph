@@ -1,6 +1,7 @@
 (ns clj-callgraph.diff
   (:require [clj-callgraph.graph :as graph]
-            [editscript.core :as e]))
+            [editscript.diff.quick :as q]
+            [editscript.edit :as e]))
 
 (defn- strip-unnecessary-attrs [deps]
   (reduce-kv (fn [deps k _]
@@ -123,7 +124,7 @@
 (defn build-diff-deps [deps1 deps2 opts]
   (let [deps1' (strip-unnecessary-attrs deps1)
         deps2' (strip-unnecessary-attrs deps2)
-        diff (e/get-edits (e/diff deps1' deps2'))]
+        diff (e/get-edits (q/diff deps1' deps2'))]
     (-> (merge-diff deps1 deps2 diff)
         (trace-affected opts)
         annotate-with-ns-changes
