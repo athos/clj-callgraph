@@ -13,5 +13,9 @@
   (require 'clj-callgraph.analyzer.tools-analyzer)
   ((resolve 'clj-callgraph.analyzer.tools-analyzer/make-tools-analyzer) opts))
 
+(defmethod make-analyzer :clj-kondo [opts]
+  (require 'clj-callgraph.analyzer.clj-kondo)
+  ((resolve 'clj-callgraph.analyzer.clj-kondo/make-clj-kondo-analyzer) opts))
+
 (defn analyze [analyzer input]
   (proto/analyze analyzer input))
