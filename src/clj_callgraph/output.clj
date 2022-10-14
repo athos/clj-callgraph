@@ -4,7 +4,7 @@
             [clojure.java.io :as io])
   (:import [java.io BufferedWriter Writer]))
 
-(defrecord StringOutput [^StringBuffer sb]
+(defrecord StringOutput [^StringBuilder sb]
   proto/IOutput
   (write [_ x]
     (.append sb x))
@@ -12,7 +12,7 @@
     (.toString sb)))
 
 (defn to-string []
-  (->StringOutput (StringBuffer.)))
+  (->StringOutput (StringBuilder.)))
 
 (defrecord WriterOutput [^Writer writer]
   proto/IOutput
