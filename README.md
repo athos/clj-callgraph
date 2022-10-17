@@ -1,4 +1,5 @@
 # clj-callgraph
+[![build](https://github.com/athos/clj-callgraph/actions/workflows/build.yml/badge.svg)](https://github.com/athos/clj-callgraph/actions/workflows/build.yml)
 
 A call graph generator for Clojure (with some fun features)
 
