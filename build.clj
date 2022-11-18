@@ -5,14 +5,17 @@
 (def lib 'dev.athos/clj-callgraph)
 (def version "0.1.0-SNAPSHOT")
 
+(defn clean [opts]
+  (bb/clean opts))
+
 (defn test "Run the tests." [opts]
   (bb/run-tests opts))
 
-(defn ci "Run the CI pipeline of tests (and build the JAR)." [opts]
+(defn jar [opts]
   (-> opts
-      (assoc :lib lib :version version)
-      (bb/run-tests)
-      (bb/clean)
+      (assoc :src-pom "template/pom.xml"
+             :lib lib :version version)
+      (clean)
       (bb/jar)))
 
 (defn install "Install the JAR locally." [opts]
