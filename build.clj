@@ -1,9 +1,10 @@
 (ns build
   (:refer-clojure :exclude [test])
-  (:require [org.corfield.build :as bb]))
+  (:require [clojure.tools.build.api :as b]
+            [org.corfield.build :as bb]))
 
 (def lib 'dev.athos/clj-callgraph)
-(def version "0.1.0-SNAPSHOT")
+(def version (format "0.1.%s" (b/git-count-revs nil)))
 
 (defn clean [opts]
   (bb/clean opts))
