@@ -1,9 +1,15 @@
 (ns clj-callgraph.analyzer.clj-kondo
   (:require [clj-callgraph.protocols :as proto]
-            [clj-kondo.core :as kondo]))
+            #?@(:bb [[pod.borkdude.clj-kondo :as kondo]]
+                :default [[clj-kondo.core :as kondo]])))
+
+(defn- run-kondo [files]
+  (let [files #?(:bb (map #(.getPath ^java.io.File %) files)
+                 :default files)]
+    (kondo/run! {:lint files :config {:analysis {:keywords true}}})))
 
 (defn- analyze* [files]
-  (let [res (kondo/run! {:lint files :config {:analysis {:keywords true}}})
+  (let [res (run-kondo files)
         init (into {} (map (fn [{:keys [ns name]}]
                              (let [ns' (str ns), name' (str name)]
                                [(symbol ns' name')
